@@ -1,0 +1,15 @@
+ext {
+    extName = 'Anitora'
+    extClass = '.Anitora'
+    themePkg = 'dooplay'
+    baseUrl = 'https://anitora.ru'
+    overrideVersionCode = 1
+    isNsfw = true
+}
+
+apply from: "$rootDir/common.gradle"
+
+dependencies {
+    implementation(project(":lib:playlist-utils"))
+    implementation(project(":lib:hunter-decoder"))
+}
