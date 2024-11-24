@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.animeextension.pt.flixei.dto.AnimeDto
 import eu.kanade.tachiyomi.animeextension.pt.flixei.dto.ApiResultsDto
 import eu.kanade.tachiyomi.animeextension.pt.flixei.dto.EpisodeDto
 import eu.kanade.tachiyomi.animeextension.pt.flixei.dto.PlayersDto
+import eu.kanade.tachiyomi.animeextension.pt.flixei.interceptor.WebViewResolver
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -14,6 +15,7 @@ import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.ParsedAnimeHttpSource
+import eu.kanade.tachiyomi.lib.fireplayerextractor.FireplayerExtractor
 import eu.kanade.tachiyomi.lib.mixdropextractor.MixDropExtractor
 import eu.kanade.tachiyomi.lib.streamtapeextractor.StreamTapeExtractor
 import eu.kanade.tachiyomi.network.GET
@@ -235,26 +237,25 @@ class Flixei : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
         return items.parallelCatchingFlatMapBlocking(::getVideosFromItem)
     }
 
+    private val webViewResolver by lazy { WebViewResolver(headers) }
     private val streamtapeExtractor by lazy { StreamTapeExtractor(client) }
     private val mixdropExtractor by lazy { MixDropExtractor(client) }
+    private val fireplayerExtractor by lazy { FireplayerExtractor(client) }
 
     private fun getVideosFromItem(item: Pair<String, String>): List<Video> {
         val (lang, query) = item
-        val headers = headersBuilder().set("referer", WAREZ_URL).build()
-        val hostUrl = if ("warezcdn" in query) {
-            "$WAREZ_URL/player/player.php$query"
-        } else {
-            client.newCall(GET("$WAREZ_URL/embed/getPlay.php$query", headers))
-                .execute()
-                .body.string()
-                .substringAfter("location.href=\"")
-                .substringBefore("\";")
+
+        val hostUrl = webViewResolver.getUrl("$EMBED_WAREZ_URL/embed/getEmbed.php$query", "$WAREZ_URL")
+
+        if (hostUrl.isNullOrBlank()) {
+            return emptyList()
         }
 
         return when (query.substringAfter("sv=")) {
             "streamtape" -> streamtapeExtractor.videosFromUrl(hostUrl, "Streamtape($lang)")
             "mixdrop" -> mixdropExtractor.videoFromUrl(hostUrl, lang)
-            else -> null // TODO: Add warezcdn extractor
+            "warezcdn" -> fireplayerExtractor.videosFromUrl(hostUrl, videoNameGen = { "WarezCDN($lang) - $it" })
+            else -> emptyList()
         }.orEmpty()
     }
 
@@ -326,8 +327,8 @@ class Flixei : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
 
         const val PREFIX_SEARCH = "path:"
 
-        private const val EMBED_WAREZ_URL = "https://embed.warezcdn.net"
-        private const val WAREZ_URL = "https://warezcdn.com"
+        private const val EMBED_WAREZ_URL = "https://embed.warezcdn.link"
+        private const val WAREZ_URL = "https://warezcdn.link"
 
         private const val PREF_PLAYER_KEY = "pref_player"
         private const val PREF_PLAYER_DEFAULT = "MixDrop"

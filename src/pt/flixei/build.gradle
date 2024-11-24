@@ -7,6 +7,7 @@ ext {
 apply from: "$rootDir/common.gradle"
 
 dependencies {
-    implementation(project(":lib:streamtape-extractor"))
+    implementation(project(":lib:fireplayer-extractor"))
     implementation(project(":lib:mixdrop-extractor"))
+    implementation(project(":lib:streamtape-extractor"))
 }
