@@ -29,13 +29,15 @@ import org.jsoup.nodes.Element
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.TimeUnit
 
-class AnimesOtaku : AnimeHttpSource() {
+class AnimesOnlineBr : AnimeHttpSource() {
 
-    override val name = "Animes Otaku"
+    override val name = "Animes Online BR"
 
-    override val baseUrl = "https://www.animesotaku.cc"
+    override val baseUrl = "https://animesonlinebr.cc"
 
-    override val lang = "pt"
+    override val lang = "pt-BR"
+
+    override val id: Long = 8286900189409315836
 
     override val supportsLatest = true
 
@@ -101,10 +103,10 @@ class AnimesOtaku : AnimeHttpSource() {
         return AnimesPage(listOf(details), false)
     }
 
-    override fun getFilterList() = AnimesOtakuFilters.FILTER_LIST
+    override fun getFilterList() = AnimesOnlineBrFilters.FILTER_LIST
 
     override fun searchAnimeRequest(page: Int, query: String, filters: AnimeFilterList): Request {
-        val params = AnimesOtakuFilters.getSearchParameters(filters)
+        val params = AnimesOnlineBrFilters.getSearchParameters(filters)
         val (meta, orderBy) = when (params.orderBy) {
             "date", "title" -> Pair(null, params.orderBy)
             else -> Pair(params.orderBy, "meta_value_num")
@@ -218,6 +220,17 @@ class AnimesOtaku : AnimeHttpSource() {
                     ?: return emptyList()
                 listOf(
                     Video(mp4Url, "Proxy CDN", mp4Url),
+                )
+            }
+
+            "file:" in url -> {
+                val mp4Url = url.substringAfter("file:", "")
+                    .substringAfter("'")
+                    .substringBefore("'")
+                    .ifEmpty { null }
+                    ?: return emptyList()
+                listOf(
+                    Video(mp4Url, "Animes Online BR", mp4Url),
                 )
             }
 
